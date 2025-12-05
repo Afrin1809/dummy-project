@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ITZen-AI — Home & Helpdesk (Single-file full chat)</title>
+<style>
+  :root{ --muted:#dce8f2; --accent:#003366; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,Helvetica,sans-serif}
+  body{
+    background: url('background.jpg') no-repeat center/cover;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    transition: background 220ms ease;
+  }
+  .page{ width:78%; max-width:1050px; border-radius:18px; overflow:hidden; transition:opacity 180ms ease; }
+
+  /* Home card */
+  .front-card{ padding:60px 40px; border-radius:30px; background:rgba(0,0,0,0.55); border:1px solid rgba(255,255,255,0.12); text-align:center; color:#eaffff; }
+  .profile{ width:90px;height:90px;margin:0 auto 18px;border-radius:15px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;box-shadow:0 0 25px rgba(0,255,255,0.25); }
+  h1.front-title{ color:cyan;font-size:48px; letter-spacing:3px; margin-bottom:8px }
+  p.tagline{ font-size:20px; opacity:0.95; margin-bottom:28px }
+  .btn-row{ display:flex; justify-content:center; gap:24px; flex-wrap:wrap }
+  .btn{ padding:14px 36px;border-radius:40px;border:none;cursor:pointer;font-size:18px;font-weight:700;background:linear-gradient(45deg, cyan,#0088ff); color:#000 }
+
+  /* Chat page (full-screen) */
+  .chat-root{ display:flex; width:100%; height:100vh; min-height:600px; box-shadow:0 0 90px rgba(0,51,102,0.45); border-radius:0; border:none; background:linear-gradient(180deg,#003366,#000); color:var(--muted); overflow:hidden; }
+  .sidebar{ width:320px; padding:22px 20px; display:flex;flex-direction:column; gap:18px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06)); }
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{ width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#001f3d);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:20px;box-shadow:0 6px 20px rgba(0,51,102,0.45); border:1px solid rgba(255,255,255,0.06)}
+  .title{font-weight:800;color:#fff;font-size:18px}
+  .subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+  .quick-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .quick-btn{ background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border:1px solid rgba(255,255,255,0.04); padding:12px;border-radius:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:600 }
+  .info{ margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,0.02); font-size:13px }
+
+  .chat-area{ flex:1; display:flex; flex-direction:column; min-height:0 } /* min-height:0 for flex scrolling */
+  .messages{ flex:1;padding:26px;overflow:auto;display:flex;flex-direction:column;gap:14px;background-image:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); }
+  .msg{ max-width:78%;padding:12px 14px;border-radius:12px;line-height:1.4;font-size:14px }
+  .bot{ align-self:flex-start;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.04); color:#e6eef8; box-shadow:0 6px 18px rgba(0,0,0,0.45); }
+  .user{ align-self:flex-end;background:linear-gradient(180deg, rgba(0,51,102,0.12), rgba(0,51,102,0.06)); border:1px solid rgba(0,51,102,0.18); color:#fff; font-weight:600; box-shadow:0 6px 18px rgba(0,51,102,0.18); }
+
+  .input-area{ padding:14px; border-top:1px solid rgba(255,255,255,0.03); display:flex; gap:8px; align-items:center; background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.08)); }
+  .input{ flex:1; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.03); color:var(--muted) }
+  .send{ background:var(--accent); border:none; padding:10px 14px; border-radius:12px; color:white; cursor:pointer; font-weight:700 }
+  .clear{ background:transparent;border:1px solid rgba(255,255,255,0.04); padding:8px 12px;border-radius:10px;color:var(--muted); cursor:pointer }
+  .chip{ padding:8px 12px;border-radius:999px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); color:#fff;border:1px solid rgba(255,255,255,0.06); font-weight:600; cursor:pointer }
+  .suggestions{ padding:12px 24px; border-top:1px dashed rgba(255,255,255,0.03); display:flex; flex-wrap:wrap; gap:8px; }
+
+  .solution{ background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.03) }
+  .solution pre{ white-space:pre-wrap; margin:0; color:var(--muted) }
+
+  .mic-btn{ width:46px;height:46px;border-radius:12px;border:none;background:rgba(0,0,0,0.45);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,0.04) }
+  .mic-btn.recording{ background: linear-gradient(135deg,var(--accent), #001f3d); color:white }
+
+  .hidden{ display:none !important }
+  .back-home{ margin-left:12px; padding:8px 12px; border-radius:10px; background:rgba(0,0,0,0.45); color:#fff; border:none; cursor:pointer }
+
+  /* small: make chat full width on mobile */
+  @media (max-width:880px){ .sidebar{ display:none } .chat-root{ height:100vh } .front-card{ padding:36px 18px } }
+
+  .messages::-webkit-scrollbar{ width:10px } .messages::-webkit-scrollbar-thumb{ background: rgba(0,51,102,0.25); border-radius:8px; }
+</style>
+</head>
+<body>
+
+  <!-- HOME PAGE (only present on #home) -->
+  <div id="page-home" class="page" role="main" aria-label="ITZen Home">
+    <div class="front-card">
+      <div class="profile">RG</div>
+      <h1 class="front-title">ITZen-AI</h1>
+      <p class="tagline">Hello buddy! 👋 Welcome to the IT Helpdesk! Just tell me your issue — I'm ready to assist you! 😊</p>
+
+      <div class="btn-row">
+        <button id="startSupport" class="btn" title="Open Helpdesk Chat">START SUPPORT</button>
+        <button id="adminLogin" class="btn" title="Admin login">ADMIN LOGIN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT TEMPLATE (kept in DOM but will become the full page when loaded) -->
+  <div id="page-chat" class="hidden" aria-label="Helpdesk Chat" role="application">
+    <div id="chatRoot" class="chat-root">
+      <aside class="sidebar" aria-hidden="false">
+        <div class="brand">
+          <div class="logo">RG</div>
+          <div>
+            <div class="title">ITZen-AI Helpdesk</div>
+            <div class="subtitle">JSON-backed KB • IT Support</div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Popular topics</div>
+          <div class="quick-actions" aria-hidden>
+            <button class="quick-btn" data-topic="teams" data-label="Teams">Teams <span class="status">›</span></button>
+            <button class="quick-btn" data-topic="zid" data-label="Zid Password">Zid Password <span class="status">›</span></button>
+            <button class="quick-btn" data-topic="hp" data-label="Printer / PPM">Printer / PPM <span class="status">›</span></button>
+            <button class="quick-btn" data-topic="outlook" data-label="Outlook">Outlook <span class="status">›</span></button>
+            <button class="quick-btn" data-topic="excel" data-label="Excel Macros">Excel Macros <span class="status">›</span></button>
+          </div>
+        </div>
+
+        <div class="info">
+          <div style="font-weight:700;color:#fff">Need more help?</div>
+          <div style="margin-top:8px">If suggested solutions don't solve the issue, contact IT at <strong>support@example.com</strong> or call <strong>+1 800 555 0199</strong>.</div>
+        </div>
+      </aside>
+
+      <main class="chat-area" style="min-height:0; display:flex; flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 18px">
+          <button id="backToHome" class="back-home" title="Back to home">Back to Home</button>
+          <div style="font-weight:700;color:#fff">ITZen-AI Helpdesk — Chat</div>
+        </div>
+
+        <div class="messages" id="messages" role="log" aria-live="polite"></div>
+        <div class="suggestions" id="suggestions" aria-hidden="true"></div>
+
+        <div class="input-area">
+          <button id="mic" class="mic-btn" title="Start voice input" aria-label="Start voice input">🎤</button>
+          <input id="input" class="input" placeholder="Describe your issue (e.g. 'printer not printing')" aria-label="Type your message" />
+          <button id="send" class="send" aria-label="Send message">Send</button>
+          <button id="history" class="clear" aria-label="Show search history">History</button>
+          <button id="clear" class="clear" aria-label="Clear chat">Clear</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+<script>
+/* ======= Behavior =======
+ - If URL is index.html#chat or user clicks START SUPPORT, we remove the home DOM
+   and make the chat-root fill the whole page so the chatbot is the only visible content.
+ - KB is loaded from kbv.json (must be in same folder).
+=========================*/
+
+const homeEl = document.getElementById('page-home');
+const chatPageEl = document.getElementById('page-chat');
+const chatRoot = document.getElementById('chatRoot');
+
+function openChatFull(){
+  // Replace body content so only chat remains visible (full page)
+  // 1) hide/remove the home element to avoid leftover content and free memory
+  if(homeEl && homeEl.parentNode) homeEl.parentNode.removeChild(homeEl);
+
+  // 2) ensure chat page visible and attached to body directly
+  chatPageEl.classList.remove('hidden');
+
+  // 3) make body layout chat-friendly (remove background blur if desired)
+  document.body.style.background = '#00121a'; // dark fallback; you can keep background.jpg if you like
+  document.body.style.padding = '0';
+  document.body.style.justifyContent = 'stretch';
+  document.body.style.alignItems = 'stretch';
+
+  // 4) move chatRoot to body as direct child for full control (optional)
+  if(chatRoot && chatRoot.parentNode && chatRoot.parentNode !== document.body){
+    // chatRoot currently inside page-chat; move page-chat's chatRoot to body
+    document.body.appendChild(chatRoot);
+    // hide the now-empty page-chat container
+    chatPageEl.style.display = 'none';
+  }
+
+  // Ensure the chatRoot fills viewport
+  chatRoot.style.width = '100%';
+  chatRoot.style.height = '100vh';
+  chatRoot.style.borderRadius = '0';
+  chatRoot.style.margin = '0';
+  chatRoot.style.overflow = 'hidden';
+
+  // start chat welcome if ready
+  if(window.__chatInitialized && typeof window.__chatShowWelcome === 'function') {
+    try{ window.__chatShowWelcome(); }catch(e){ /* ignore */ }
+  }
+}
+
+// event handlers for navigation
+document.getElementById('startSupport').addEventListener('click', (e) => {
+  e.preventDefault();
+  // change URL so user can bookmark /chat
+  location.hash = '#chat';
+  // open chat as full page
+  openChatFull();
+});
+
+// open chat in new tab link removed (per your request)
+
+document.getElementById('backToHome').addEventListener('click', ()=>{
+  // reload page to bring back home (simplest reliable way)
+  location.hash = '';
+  location.reload();
+});
+
+// admin login (placeholder)
+document.getElementById('adminLogin').addEventListener('click', ()=> {
+  alert('Admin login not implemented in this demo. Replace with your login flow.');
+});
+
+/* ======= Chat logic (same as earlier) ======= */
+(function(){
+  let KB = {};
+  let items = [];
+  let lastIssueList = [];
+  let recognition = null;
+  let isRecording = false;
+  let searchHistory = [];
+
+  const messagesEl = document.getElementById('messages');
+  const suggestionsEl = document.getElementById('suggestions');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const clearBtn = document.getElementById('clear');
+  const historyBtn = document.getElementById('history');
+  const micBtn = document.getElementById('mic');
+
+  function escapeHtml(str){ return String(str).replace(/[&<>"]/g, function(tag){ const chars = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }; return chars[tag] || tag; }); }
+  function addMessage(text, who='bot', allowHtml=false){
+    const el = document.createElement('div');
+    el.className = 'msg ' + (who==='user' ? 'user' : 'bot');
+    el.innerHTML = allowHtml ? text : escapeHtml(text).replace(/\n/g, '<br>');
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  function speak(text){
+    if(!('speechSynthesis' in window)) return;
+    try{ window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); const voices = window.speechSynthesis.getVoices(); if(voices && voices.length){ const v = voices.find(v=>/female|woman|woman/i.test(v.name)) || voices.find(v=>/en/i.test(v.lang)) || voices[0]; if(v) u.voice = v; } u.rate = 1; window.speechSynthesis.speak(u); } catch(e){ console.warn('speak',e); }
+  }
+
+  function buildItemsFromKB(){ items = []; for(const [id,obj] of Object.entries(KB || {})){ items.push({ id, title: obj.title || id, issues: obj.issues || {} }); } }
+
+  function scoreCandidateWithTokens(it, tokens){
+    const title = (it.title||'').toLowerCase();
+    const issuesText = (Object.keys(it.issues || {}).join(' ') + ' ' + Object.values(it.issues || {}).join(' ')).toLowerCase();
+    const combined = title + ' ' + issuesText;
+    let score = 0;
+    for(const tok of tokens){
+      if(title.includes(tok)) score += 2;
+      if(issuesText.includes(tok)) score += 1;
+      if(tok.length > 4 && combined.includes(tok)) score += 0.2;
+    }
+    return score;
+  }
+
+  function searchKBForPhrase(text){
+    if(!text) return null;
+    const t = text.toLowerCase().trim();
+    for(const it of items){ if(it.title.toLowerCase() === t) return it; }
+    for(const it of items){ if(it.title.toLowerCase().includes(t)) return it; }
+    const tokens = t.split(/\s+/).filter(Boolean);
+    if(tokens.length === 0) return null;
+    const scored = items.map(it => ({ it, score: scoreCandidateWithTokens(it, tokens) }));
+    scored.sort((a,b) => b.score - a.score);
+    if(scored.length && scored[0].score > 0) return scored[0].it;
+    return null;
+  }
+
+  function findTopic(text){
+    const t = (text||'').toLowerCase();
+    if(/\b(hi|hello|hey|hii)\b/.test(t)) return 'greeting';
+    if(t.match(/printer|print|ppm|secureprint|badge|card/)) return 'printer';
+    if(t.match(/wi-?fi|wifi|network|internet|lan|ethernet|ping/)) return 'network';
+    if(t.match(/login|password|sign in|unlock|ipn|zid|pummp/)) return 'login';
+    if(t.match(/install|application|software|crash|error|bug/)) return 'software';
+    if(t.match(/outlook|mail|email|pst|ost|search|scanpst/)) return 'outlook';
+    if(t.match(/excel|macro|macros/)) return 'excel';
+    if(t.match(/teams/)) return 'teams';
+    return null;
+  }
+
+  function suggestForTopic(topic){
+    if(!topic) return [];
+    const t = topic.toLowerCase();
+    let direct = items.filter(it => it.id.toLowerCase().includes(t) || it.title.toLowerCase().includes(t));
+    if(direct.length) return direct;
+    let fallback = items.filter(it => {
+      const comb = (it.title + ' ' + Object.keys(it.issues).join(' ') + ' ' + Object.values(it.issues).join(' ')).toLowerCase();
+      return comb.includes(t);
+    });
+    if(fallback.length) return fallback;
+    const tokens = t.split(/\s+/).filter(Boolean);
+    if(tokens.length){
+      const scored = items.map(it => ({ it, score: scoreCandidateWithTokens(it, tokens) }));
+      scored.sort((a,b) => b.score - a.score);
+      const related = scored.filter(s => s.score > 0).map(s => s.it).filter((v,i,a)=>a.indexOf(v)===i).slice(0,6);
+      if(related.length) return related;
+    }
+    return items.slice(0,6);
+  }
+
+  function showSuggestions(itemsList){
+    suggestionsEl.innerHTML = '';
+    lastIssueList = itemsList || [];
+    if(!itemsList || itemsList.length===0){ suggestionsEl.setAttribute('aria-hidden','true'); return; }
+    suggestionsEl.setAttribute('aria-hidden','false');
+    itemsList.forEach((it, idx)=>{
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = it.title;
+      btn.onclick = ()=> selectIssue(idx);
+      suggestionsEl.appendChild(btn);
+    });
+  }
+
+  function selectIssue(idx){
+    if(!lastIssueList || !lastIssueList[idx]) return;
+    const issue = lastIssueList[idx];
+    addMessage(issue.title, 'user');
+    const iss = issue.issues || {};
+    let stepsHTML = '<ol style="padding-left:18px;margin:8px 0">';
+    for(const [k,v] of Object.entries(iss)){
+      const showKey = (k && !k.match(/^Problem$/i) && k !== v);
+      const lineTitle = showKey ? `<strong>${escapeHtml(k)}:</strong> ` : '';
+      stepsHTML += `<li style="margin-bottom:6px">${lineTitle}${escapeHtml(v)}</li>`;
+    }
+    stepsHTML += '</ol>';
+    const solHTML = `<div class="solution"><strong>Solution:</strong>${stepsHTML}
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="chip" onclick="markResolved()">Mark as resolved</button>
+        <button class="chip" onclick="contactSupport()">Contact support</button>
+      </div></div>`;
+    addMessage(solHTML, 'bot', true);
+    const firstVal = Object.values(iss)[0] || issue.title;
+    if(firstVal) speak(`${issue.title}. ${firstVal.toString().replace(/\n/g, '. ')}`);
+    suggestionsEl.innerHTML = '';
+    lastIssueList = [];
+  }
+
+  window.markResolved = function(){ addMessage('Thank you — glad it worked! If you need anything else, type your question.','bot'); speak('Glad it worked.'); }
+  window.contactSupport = function(){ addMessage('You can contact IT support at support@example.com or call +1 800 555 0199. Would you like me to open a ticket for you?','bot'); speak('You can contact IT support at support at example dot com.'); }
+
+  function loadHistory() {
+    const saved = localStorage.getItem('search_history');
+    if(saved){ try { searchHistory = JSON.parse(saved); } catch(e){ searchHistory = []; } }
+  }
+  function saveHistory() { localStorage.setItem('search_history', JSON.stringify(searchHistory)); }
+  function addToHistory(term){
+    if(!term) return; const t = term.trim(); if(!t) return;
+    const idx = searchHistory.indexOf(t); if(idx !== -1) searchHistory.splice(idx, 1);
+    searchHistory.unshift(t); if(searchHistory.length > 30) searchHistory = searchHistory.slice(0,30);
+    saveHistory();
+  }
+  function showHistory() {
+    suggestionsEl.innerHTML = '';
+    if(!searchHistory || searchHistory.length===0){ suggestionsEl.setAttribute('aria-hidden','false'); addMessage('No search history found.', 'bot'); return; }
+    suggestionsEl.setAttribute('aria-hidden','false');
+    searchHistory.forEach((term, idx) => {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = term;
+      chip.onclick = () => { const val = term; handleUserMessage(val); };
+      suggestionsEl.appendChild(chip);
+    });
+    const clearChip = document.createElement('button');
+    clearChip.className = 'chip';
+    clearChip.style.borderColor = 'rgba(0,51,102,0.6)';
+    clearChip.style.color = '#fff';
+    clearChip.textContent = 'Clear History';
+    clearChip.onclick = () => {
+      localStorage.removeItem('search_history');
+      searchHistory = [];
+      suggestionsEl.innerHTML = '';
+      addMessage('Search history cleared.', 'bot');
+    };
+    suggestionsEl.appendChild(clearChip);
+  }
+
+  function generateGenericAnswer(query){
+    const q = (query||'').toLowerCase();
+    let area = 'General';
+    if(q.includes('printer') || q.includes('print')) area = 'Printer';
+    else if(q.includes('outlook') || q.includes('pst') || q.includes('ost') || q.includes('email')) area = 'Outlook/Email';
+    else if(q.includes('teams') || q.includes('meeting') || q.includes('audio') || q.includes('video')) area = 'Teams / Meetings';
+    else if(q.includes('password') || q.includes('login') || q.includes('sign in')) area = 'Authentication';
+    else if(q.includes('excel') || q.includes('macro')) area = 'Excel / Macros';
+    else if(q.includes('network') || q.includes('wifi') || q.includes('internet')) area = 'Network';
+
+    const steps = [
+      `1) Reproduce & Clarify — Try to reproduce the issue and note exact error messages, time, and steps.`,
+      `2) Basic restart — Close the affected app, restart the device or service, and retry.`,
+      `3) Check permissions/settings — Verify app-specific settings, account permissions, or device access.`,
+      `4) Update & Patch — Ensure app/OS drivers and updates are installed.`,
+      `5) Logs & Diagnostics — Collect logs or run built-in diagnostics.`,
+      `6) Temporary workarounds — Use web apps or alternate devices if available.`,
+      `7) Backup & Restore — Backup data before repair or restore.`,
+      `8) Contact support — Provide IT with steps, screenshots and logs if unresolved.`
+    ];
+    let hints = '';
+    if(area === 'Printer'){ hints = 'Hint: For printers, check power/network, paper jams, and reinstall drivers.'; }
+    else if(area === 'Outlook/Email'){ hints = 'Hint: Try ScanPST or rebuild OST for Exchange accounts.'; }
+    else if(area === 'Teams / Meetings'){ hints = 'Hint: Clear Teams cache and test in web client.'; }
+    else if(area === 'Authentication'){ hints = 'Hint: Verify system date/time and clear saved credentials.'; }
+    else if(area === 'Excel / Macros'){ hints = 'Hint: Use Trust Center settings for macros.'; }
+    else if(area === 'Network'){ hints = 'Hint: Try wired connection and reboot router.'; }
+
+    let answer = `I couldn't find an exact KB article for "${escapeHtml(query)}". Try these general steps for ${area} issues:\n\n`;
+    answer += steps.join('\n') + '\n\n' + hints;
+    return answer;
+  }
+
+  function handleUserMessage(textRaw){
+    const text = (textRaw||'').trim(); if(!text) return; addMessage(text, 'user'); addToHistory(text);
+    if(text.toLowerCase().includes('open ticket')){ addMessage('Ticket created (demo). Ticket ID: <strong>#HD-000123</strong>','bot', true); speak('Ticket created.'); return; }
+
+    const topic = findTopic(text);
+    if(topic === 'greeting'){ addMessage('Hello! 👋 How can I help you today?.','bot', true); speak('Hello! How can I help you today?'); return; }
+
+    if(topic){
+      const suggested = suggestForTopic(topic).slice(0,6);
+      if(suggested.length){ addMessage(`I found these common ${topic} items — please choose one:`, 'bot'); lastIssueList = suggested; setTimeout(()=>{ showSuggestions(suggested); }, 120); speak(`I found some common ${topic} items.`); return; }
+    }
+
+    const found = searchKBForPhrase(text);
+    if(found){ lastIssueList = [found]; selectIssue(0); return; }
+
+    const tokens = text.toLowerCase().split(/\s+/).filter(Boolean);
+    if(tokens.length){
+      const scoredAll = items.map(it => ({ it, score: scoreCandidateWithTokens(it, tokens) }));
+      scoredAll.sort((a,b)=>b.score - a.score);
+      const related = scoredAll.filter(s=>s.score>0).map(s=>s.it).filter((v,i,arr)=>arr.indexOf(v)===i).slice(0,6);
+      if(related.length){ addMessage(`I couldn't find an exact match for "${escapeHtml(text)}", but here are related help items — please choose one:`, 'bot'); lastIssueList = related; setTimeout(()=>{ showSuggestions(related); }, 120); speak('I found related items — please choose the one that matches.'); return; }
+    }
+
+    const generic = generateGenericAnswer(text);
+    const solHTML = `<div class="solution"><strong>Suggested steps:</strong><pre>${escapeHtml(generic)}</pre>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="chip" onclick="markResolved()">Mark as resolved</button>
+        <button class="chip" onclick="contactSupport()">Contact support</button>
+      </div></div>`;
+    addMessage(solHTML, 'bot', true);
+    speak('I prepared some general troubleshooting steps. Check the chat for details.');
+    const fallbackChips = [
+      {title:'Teams issues', id:'__cat_teams', issues: { 'Try': 'Type "teams" or ask about sign-in, audio/video, connectivity, file sharing' }},
+      {title:'Printer / PPM', id:'__cat_printer', issues: { 'Try': 'Type "printer" or ask about PPM or badge enrollment' }},
+      {title:'Outlook / Mail', id:'__cat_outlook', issues: { 'Try': 'Type "outlook" or ask about PST/OST, search, or startup errors' }},
+      {title:'Excel Macros', id:'__cat_excel', issues: { 'Try': 'Type "excel" or ask about enabling macros' }}
+    ];
+    lastIssueList = fallbackChips; showSuggestions(fallbackChips);
+  }
+
+  sendBtn.addEventListener('click', ()=>{ const t = inputEl.value.trim(); if(!t) return; inputEl.value=''; handleUserMessage(t); });
+  inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
+  clearBtn.addEventListener('click', ()=>{ messagesEl.innerHTML=''; suggestionsEl.innerHTML=''; addMessage('<strong>Chat cleared.</strong> You can ask anything from the helpdesk KB or start with a topic on the left.','bot', true); });
+  historyBtn.addEventListener('click', ()=>{ showHistory(); });
+
+  document.querySelectorAll('.quick-btn').forEach(b=>{ b.addEventListener('click', ()=>{ const topic = b.getAttribute('data-topic'); const label = b.getAttribute('data-label') || topic; addMessage(label, 'user'); handleUserMessage(label); }); });
+
+  function setupRecognition(){
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if(!SpeechRecognition) return null;
+    const r = new SpeechRecognition();
+    r.lang = 'en-US';
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    r.onresult = (ev) => { const spoken = ev.results[0][0].transcript; inputEl.value = spoken; setTimeout(()=>{ sendBtn.click(); }, 150); };
+    r.onend = ()=>{ isRecording = false; micBtn.classList.remove('recording'); micBtn.title = 'Start voice input'; };
+    r.onerror = (ev)=>{ console.warn('Speech recognition error', ev); isRecording = false; micBtn.classList.remove('recording'); micBtn.title = 'Start voice input'; addMessage('Voice input error or not allowed.','bot'); };
+    return r;
+  }
+  function toggleRecording(){
+    if(!recognition) { recognition = setupRecognition(); if(!recognition){ addMessage('Voice input not supported in this browser. Use Chrome or Edge.', 'bot'); return; } }
+    if(isRecording){ recognition.stop(); isRecording = false; micBtn.classList.remove('recording'); micBtn.title = 'Start voice input'; } else {
+      try { recognition.start(); isRecording = true; micBtn.classList.add('recording'); micBtn.title = 'Stop voice input'; } catch(e){ console.warn('start error', e); }
+    }
+  }
+  micBtn.addEventListener('click', toggleRecording);
+
+  function startChat(){
+    loadHistory();
+    // show initial message only once
+    if(!window.__chatHasWelcomed){
+      addMessage('<strong>Hello — I\\\'m your Helpdesk Assistant.</strong> You can type or use the microphone. Try: "how to reset password", "printer configuration", or "how to use SecurePrint".','bot', true);
+      window.__chatHasWelcomed = true;
+    }
+    if('speechSynthesis' in window) window.speechSynthesis.getVoices();
+  }
+  window.__chatShowWelcome = startChat;
+
+  // Load kbv.json (must be next to this file)
+  fetch('kbv.json')
+    .then(resp => { if(!resp.ok) throw new Error('Failed to load kbv.json: ' + resp.status); return resp.json(); })
+    .then(data => { KB = data; buildItemsFromKB(); console.log('KB loaded, items:', items.length); window.__chatInitialized = true; })
+    .catch(err => { console.error('Error loading KB:', err); addMessage('<strong>Error:</strong> Failed to load kbv.json. Make sure kbv.json is in the same folder as this HTML file.', 'bot', true); window.__chatInitialized = true; });
+
+})();
+</script>
+
+<!-- If user opens index.html#chat directly, auto-run openChatFull() -->
+<script>
+if(location.hash === '#chat'){
+  // small delay so DOM fully parsed
+  window.addEventListener('DOMContentLoaded', ()=> {
+    // call openChatFull defined above
+    try{ openChatFull(); }catch(e){ console.warn('openChatFull error', e); }
+  });
+}
+</script>
+</body>
+</html>
